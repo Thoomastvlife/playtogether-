@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>打磚塊遊戲</title>
+<title>Lovense 打磚塊遊戲</title>
 <style>
 body { margin:0; padding:0; text-align:center; font-family: Arial, sans-serif; background: linear-gradient(to bottom,#cce7ff,#ffffff);}
 canvas { background: #eee; display:block; margin: 10px auto; touch-action: none; border-radius: 10px; }
@@ -14,7 +14,7 @@ p { font-size:16px; }
 </head>
 <body>
 <h1>Lovense 打磚塊遊戲</h1>
-<p>打中磚塊 → 玩具震動 🚀（強度隨分數增加，最大 50）<br>輸掉遊戲 → 強度100，時間30秒<br>勝利時 → 連續短震慶祝</p>
+<p>打中磚塊 → 玩具震動 🚀<br>輸掉遊戲 → 強度100，時間30秒<br>勝利時 → 連續短震慶祝<br>分數超過30後球速逐步增加</p>
 <canvas id="myCanvas"></canvas>
 <button id="connectBtn">連線藍牙玩具</button>
 
@@ -30,29 +30,36 @@ canvas.height = window.innerHeight * 0.5;
 let ballRadius = 10;
 let x = canvas.width/2;
 let y = canvas.height-30;
-let dx = 2;
-let dy = -2;
+let baseSpeed = 2;
+let dx = baseSpeed;
+let dy = -baseSpeed;
 let paddleHeight = 15;
-let paddleWidth = canvas.width*0.2; // 適合手機
+let paddleWidth = canvas.width*0.2;
 let paddleX = (canvas.width-paddleWidth)/2;
 let rightPressed = false;
 let leftPressed = false;
-let brickRowCount = 5;
-let brickColumnCount = 5;
-let brickWidth = (canvas.width - 40 - (brickColumnCount-1)*10)/brickColumnCount;
-let brickHeight = 20;
+
+// 動態計算磚塊數量
 let brickPadding = 10;
 let brickOffsetTop = 30;
 let brickOffsetLeft = 20;
+let brickRowCount = 8; 
+let brickColumnCount = Math.floor((canvas.width - 40) / (70 + brickPadding));
+let brickWidth = (canvas.width - 40 - (brickColumnCount-1)*brickPadding)/brickColumnCount;
+let brickHeight = 20;
 let score = 0;
 
 let bricks=[];
-for(let c=0;c<brickColumnCount;c++){
-  bricks[c]=[];
-  for(let r=0;r<brickRowCount;r++){
-    bricks[c][r]={x:0,y:0,status:1,row:r};
+function initBricks(){
+  bricks = [];
+  for(let c=0;c<brickColumnCount;c++){
+    bricks[c]=[];
+    for(let r=0;r<brickRowCount;r++){
+      bricks[c][r]={x:0, y:0, status:1, row:r};
+    }
   }
 }
+initBricks();
 
 // 鍵盤控制
 document.addEventListener("keydown",e=>{
@@ -98,6 +105,7 @@ async function vibrateToy(sec,strength){
   if(bluetoothCharacteristic){try{await bluetoothCharacteristic.writeValue(Uint8Array.of(strength,sec));}catch(e){console.log(e);}}
 }
 
+// 勝利連續短震
 async function celebrateVictory(times=5, sec=0.5){
   for(let i=0;i<times;i++){
     let strength=Math.min(5+score,50);
@@ -115,6 +123,13 @@ function collisionDetection(){
         b.status=0;
         score++;
         vibrateToy(1,Math.min(5+score,50));
+
+        // 球速增加
+        if(score>30){
+          dx *= 1.02;
+          dy *= 1.02;
+        }
+
         if(score===brickRowCount*brickColumnCount){
           alert("你贏了！");
           celebrateVictory();
@@ -127,7 +142,7 @@ function collisionDetection(){
 
 function drawBall(){ctx.beginPath(); ctx.arc(x,y,ballRadius,0,Math.PI*2); ctx.fillStyle="#0095DD"; ctx.fill(); ctx.closePath();}
 function drawPaddle(){ctx.beginPath(); ctx.roundRect(paddleX,canvas.height-paddleHeight,paddleWidth,paddleHeight,8); ctx.fillStyle="#0095DD"; ctx.fill(); ctx.closePath();}
-function drawBricks(){for(let c=0;c<brickColumnCount;c++){for(let r=0;r<brickRowCount;r++){let b=bricks[c][r]; if(b.status===1){let brickX=(c*(brickWidth+brickPadding))+brickOffsetLeft; let brickY=(r*(brickHeight+brickPadding))+brickOffsetTop; b.x=brickX;b.y=brickY; ctx.beginPath(); ctx.roundRect(brickX,brickY,brickWidth,brickHeight,5); let colorValue=50+r*40; ctx.fillStyle=`rgb(${colorValue},100,${255-colorValue})`; ctx.fill(); ctx.closePath();}}}}
+function drawBricks(){for(let c=0;c<brickColumnCount;c++){for(let r=0;r<brickRowCount;r++){let b=bricks[c][r]; if(b.status===1){let brickX=(c*(brickWidth+brickPadding))+brickOffsetLeft; let brickY=(r*(brickHeight+brickPadding))+brickOffsetTop; b.x=brickX;b.y=brickY; ctx.beginPath(); ctx.roundRect(brickX,brickY,brickWidth,brickHeight,5); let colorValue=50+r*20; ctx.fillStyle=`rgb(${colorValue},100,${255-colorValue})`; ctx.fill(); ctx.closePath();}}}}
 function drawScore(){ctx.font="18px Arial"; ctx.fillStyle="#0095DD"; ctx.fillText("分數: "+score,8,20);}
 
 function draw(){
