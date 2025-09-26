@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>Lovense 打磚塊遊戲</title>
+  <style>
+    body { text-align: center; font-family: Arial, sans-serif; }
+    canvas { background: #eee; display: block; margin: 20px auto; }
+    button { margin: 10px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
+  </style>
+</head>
+<body>
+<h1>Lovense 打磚塊遊戲</h1>
+<p>打中磚塊 → 玩具震動 🚀（強度隨分數增加，最大 50）<br>
+輸掉遊戲 → 強度100，時間30秒<br>
+勝利時 → 連續短震慶祝</p>
+<canvas id="myCanvas" width="480" height="320"></canvas>
+<button id="connectBtn">連線藍牙玩具</button>
+
+<script>
+const canvas = document.getElementById("myCanvas");
+const ctx = canvas.getContext("2d");
+
+// 遊戲設定
+let ballRadius = 10;
+let x = canvas.width/2;
+let y = canvas.height-30;
+let dx = 2;
+let dy = -2;
+let paddleHeight = 10;
+let paddleWidth = 75;
+let paddleX = (canvas.width-paddleWidth)/2;
+let rightPressed = false;
+let leftPressed = false;
+let brickRowCount = 5;
+let brickColumnCount = 5;
+let brickWidth = 75;
+let brickHeight = 20;
+let brickPadding = 10;
+let brickOffsetTop = 30;
+let brickOffsetLeft = 30;
+let score = 0;
+
+let bricks = [];
+for(let c=0;c<brickColumnCount;c++){
+  bricks[c] = [];
+  for(let r=0;r<brickRowCount;r++){
+    bricks[c][r]={x:0,y:0,status:1,row:r};
+  }
+}
+
+document.addEventListener("keydown",e=>{
+  if(e.key==="Right"||e.key==="ArrowRight") rightPressed=true;
+  else if(e.key==="Left"||e.key==="ArrowLeft") leftPressed=true;
+});
+
+document.addEventListener("keyup",e=>{
+  if(e.key==="Right"||e.key==="ArrowRight") rightPressed=false;
+  else if(e.key==="Left"||e.key==="ArrowLeft") leftPressed=false;
+});
+
+// Lovense 控制 & Web Bluetooth
+let bluetoothDevice=null;
+let bluetoothCharacteristic=null;
+
+const connectBtn=document.getElementById('connectBtn');
+connectBtn.addEventListener('click',async ()=>{
+  try{
+    bluetoothDevice=await navigator.bluetooth.requestDevice({
+      filters:[{namePrefix:'Lovense'}],
+      optionalServices:['0000xxxx-0000-1000-8000-00805f9b34fb']
+    });
+    const server=await bluetoothDevice.gatt.connect();
+    const service=await server.getPrimaryService('0000xxxx-0000-1000-8000-00805f9b34fb');
+    bluetoothCharacteristic=await service.getCharacteristic('0000yyyy-0000-1000-8000-00805f9b34fb');
+    alert('藍牙玩具已連線！');
+  }catch(e){console.log('藍牙連線失敗',e);alert('藍牙連線失敗，請確認玩具與瀏覽器支援');}
+});
+
+async function vibrateToy(sec,strength){
+  strength=Math.min(strength,100); // 最大100
+  try{
+    await fetch("http://127.0.0.1:30010/command",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({command:"Function",action:"Vibrate",timeSec:sec,strength:strength})
+    });
+  }catch(error){console.log("無法連線到 Lovense Connect App:"+error);}
+  if(bluetoothCharacteristic){
+    try{await bluetoothCharacteristic.writeValue(Uint8Array.of(strength,sec));} 
+    catch(e){console.log("藍牙震動失敗",e);}
+  }
+}
+
+// 勝利連續短震
+async function celebrateVictory(times=5, sec=0.5){
+  for(let i=0;i<times;i++){
+    let strength=Math.min(5+score,50);
+    vibrateToy(sec,strength);
+    await new Promise(resolve=>setTimeout(resolve, sec*1000+100)); // 每次震動後稍作延遲
+  }
+}
+
+// 遊戲函式
+function collisionDetection(){
+  for(let c=0;c<brickColumnCount;c++){
+    for(let r=0;r<brickRowCount;r++){
+      let b=bricks[c][r];
+      if(b.status===1 && x>b.x && x<b.x+brickWidth && y>b.y && y<b.y+brickHeight){
+        dy=-dy;
+        b.status=0;
+        score++;
+        vibrateToy(1,Math.min(5+score,50));
+        if(score===brickRowCount*brickColumnCount){
+          alert("你贏了！");
+          celebrateVictory();
+          document.location.reload();
+        }
+      }
+    }
+  }
+}
+
+function drawBall(){
+  ctx.beginPath();
+  ctx.arc(x,y,ballRadius,0,Math.PI*2);
+  ctx.fillStyle="#0095DD";
+  ctx.fill();
+  ctx.closePath();
+}
+
+function drawPaddle(){
+  ctx.beginPath();
+  ctx.rect(paddleX,canvas.height-paddleHeight,paddleWidth,paddleHeight);
+  ctx.fillStyle="#0095DD";
+  ctx.fill();
+  ctx.closePath();
+}
+
+function drawBricks(){
+  for(let c=0;c<brickColumnCount;c++){
+    for(let r=0;r<brickRowCount;r++){
+      let b=bricks[c][r];
+      if(b.status===1){
+        let brickX=(c*(brickWidth+brickPadding))+brickOffsetLeft;
+        let brickY=(r*(brickHeight+brickPadding))+brickOffsetTop;
+        b.x=brickX;b.y=brickY;
+        ctx.beginPath();
+        ctx.rect(brickX,brickY,brickWidth,brickHeight);
+        let colorValue=50+r*40;
+        ctx.fillStyle=`rgb(${colorValue},100,${255-colorValue})`;
+        ctx.fill();
+        ctx.closePath();
+      }
+    }
+  }
+}
+
+function drawScore(){
+  ctx.font="16px Arial";
+  ctx.fillStyle="#0095DD";
+  ctx.fillText("分數: "+score,8,20);
+}
+
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawBricks();
+  drawBall();
+  drawPaddle();
+  drawScore();
+  collisionDetection();
+
+  if(x+dx>canvas.width-ballRadius||x+dx<ballRadius) dx=-dx;
+  if(y+dy<ballRadius) dy=-dy;
+  else if(y+dy>canvas.height-ballRadius){
+    if(x>paddleX && x<paddleX+paddleWidth) dy=-dy;
+    else{
+      alert("遊戲結束");
+      vibrateToy(30,100); // 輸掉震動
+      document.location.reload();
+    }
+  }
+
+  if(rightPressed && paddleX<canvas.width-paddleWidth) paddleX+=7;
+  else if(leftPressed && paddleX>0) paddleX-=7;
+
+  x+=dx;
+  y+=dy;
+  requestAnimationFrame(draw);
+}
+
+draw();
+</script>
+</body>
+</html>
