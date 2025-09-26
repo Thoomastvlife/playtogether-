@@ -14,7 +14,7 @@ p { font-size: 20px; }
 </head>
 <body>
 <h1>打磚塊遊戲</h1>
-<!---<p>打中磚塊 → 玩具震動 🚀<br>輸掉遊戲 → 強度100，時間30秒<br>勝利時 → 連續短震慶祝<br>分數超過30後球速逐步增加</p>--->
+<p>打中磚塊 → 玩具震動 🚀<br>輸掉遊戲 → 強度100，時間30秒<br>勝利時 → 連續短震慶祝<br>分數超過30後球速逐步增加</p>
 <canvas id="myCanvas"></canvas>
 <button id="connectBtn">連線藍牙玩具</button>
 
@@ -27,24 +27,24 @@ canvas.width = window.innerWidth * 0.95;
 canvas.height = window.innerHeight * 0.5;
 
 // 遊戲設定
-let ballRadius = 12; // 球稍大
+let ballRadius = 12; 
 let x = canvas.width/2;
 let y = canvas.height-30;
 let baseSpeed = 2;
 let dx = baseSpeed;
 let dy = -baseSpeed;
 let paddleHeight = 20;
-let paddleWidth = canvas.width*0.25; // paddle大一些
+let paddleWidth = canvas.width*0.25; 
 let paddleX = (canvas.width-paddleWidth)/2;
 
 // 磚塊設定
-let brickPadding = 12;
+let brickPadding = 15; // 間距加大
 let brickOffsetTop = 40;
 let brickOffsetLeft = 20;
-let brickRowCount = 6; 
-let brickColumnCount = Math.floor((canvas.width - 40) / (80 + brickPadding));
+let brickRowCount = 10; // 行數增加
+let brickColumnCount = Math.floor((canvas.width - 40) / (90 + brickPadding)); // 列數更多，磚塊寬度大
 let brickWidth = (canvas.width - 40 - (brickColumnCount-1)*brickPadding)/brickColumnCount;
-let brickHeight = 30; // 高度加大
+let brickHeight = 35; // 高度加大
 let score = 0;
 
 let bricks=[];
@@ -142,8 +142,8 @@ function collisionDetection(){
 
 function drawBall(){ctx.beginPath(); ctx.arc(x,y,ballRadius,0,Math.PI*2); ctx.fillStyle="#0095DD"; ctx.fill(); ctx.closePath();}
 function drawPaddle(){ctx.beginPath(); ctx.roundRect(paddleX,canvas.height-paddleHeight,paddleWidth,paddleHeight,10); ctx.fillStyle="#0095DD"; ctx.fill(); ctx.closePath();}
-function drawBricks(){for(let c=0;c<brickColumnCount;c++){for(let r=0;r<brickRowCount;r++){let b=bricks[c][r]; if(b.status===1){let brickX=(c*(brickWidth+brickPadding))+brickOffsetLeft; let brickY=(r*(brickHeight+brickPadding))+brickOffsetTop; b.x=brickX;b.y=brickY; ctx.beginPath(); ctx.roundRect(brickX,brickY,brickWidth,brickHeight,6); let colorValue=50+r*20; ctx.fillStyle=`rgb(${colorValue},100,${255-colorValue})`; ctx.fill(); ctx.closePath();}}}}
-function drawScore(){ctx.font="24px Arial"; ctx.fillStyle="#0095DD"; ctx.fillText("分數: "+score,10,30);}
+function drawBricks(){for(let c=0;c<brickColumnCount;c++){for(let r=0;r<brickRowCount;r++){let b=bricks[c][r]; if(b.status===1){let brickX=(c*(brickWidth+brickPadding))+brickOffsetLeft; let brickY=(r*(brickHeight+brickPadding))+brickOffsetTop; b.x=brickX;b.y=brickY; ctx.beginPath(); ctx.roundRect(brickX,brickY,brickWidth,brickHeight,8); let colorValue=50+r*15; ctx.fillStyle=`rgb(${colorValue},100,${255-colorValue})`; ctx.fill(); ctx.closePath();}}}}
+function drawScore(){ctx.font="28px Arial"; ctx.fillStyle="#0095DD"; ctx.fillText("分數: "+score,10,35);}
 
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
